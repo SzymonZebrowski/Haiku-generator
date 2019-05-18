@@ -3,7 +3,7 @@ import pyphen
 def preprocess(DATA):
     data = DATA
     data = data.lower().replace('"', ''). \
-            replace('<br>', '\n').replace('\r', '').replace('.', ''). \
+            replace('<br> ', '\n').replace('<br>', '\n').replace('\r', '').replace('.', ''). \
             replace('?', '').replace('!', '').replace("&amp", ''). \
             replace('(', '').replace(')', '').replace('*', '').replace("'", ''). \
             replace('[', '').replace(']', '').replace('/', '').replace("\\", ''). \
