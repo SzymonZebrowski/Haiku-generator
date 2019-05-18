@@ -4,9 +4,11 @@ import numpy as np
 import os
 import time
 import pyphen
+import matplotlib.pyplot as plt
 
 tf.enable_eager_execution()
 path_to_file = './data/eng-haiku.txt'
+
 
 text = open(path_to_file, 'rb').read().decode(encoding='utf-8')
 
@@ -84,7 +86,7 @@ example_batch_loss  = loss(target_example_batch, example_batch_predictions)
 print("Prediction shape: ", example_batch_predictions.shape, " # (batch_size, sequence_length, vocab_size)")
 print("scalar_loss:      ", example_batch_loss.numpy().mean())
 
-model.compile(optimizer='adam', loss=loss, metrics='accuracy')
+model.compile(optimizer='adam', loss=loss, metrics=["accuracy"])
 
 # Directory where the checkpoints will be saved
 checkpoint_dir = './training_checkpoints'
@@ -96,15 +98,31 @@ checkpoint_callback=tf.keras.callbacks.ModelCheckpoint(
     save_weights_only=True,
     period=10)
 
-EPOCHS=10000
+EPOCHS=100
 
 #########UNCOMMENT TO TRAIN############
-#history = model.fit(dataset, epochs=EPOCHS, callbacks=[checkpoint_callback], steps_per_epoch=1)
+history = model.fit(dataset, epochs=EPOCHS, callbacks=[checkpoint_callback], steps_per_epoch=1)
+
+fig, ax1 = plt.subplots()
+ax1.set_xlabel("Iteration")
+ax1.set_ylabel("Loss")
+ax1.plot(list(range(1, len(history.history['loss']) + 1)), history.history['loss'], 'b', label='Loss')
+
+ax2 = ax1.twinx()
+ax2.set_ylabel("Acurracy")
+ax2.plot(list(range(1, len(history.history['acc']) + 1)), history.history['acc'], 'r', label='Accuracy')
+
+fig.legend(loc='best')
+plt.title("Training")
+
+# plt.show()
+plt.savefig("wykres.png")
+plt.close()
 
 #########UNCOMMENT TO LOAD############
-model = build_model(vocab_size, embedding_dim, rnn_units, batch_size=1)
-model.load_weights(tf.train.latest_checkpoint(checkpoint_dir))
-model.build(tf.TensorShape([1, None]))
+#model = build_model(vocab_size, embedding_dim, rnn_units, batch_size=1)
+#model.load_weights(tf.train.latest_checkpoint(checkpoint_dir))
+#model.build(tf.TensorShape([1, None]))
 
 def generate_text(model, start_string, num_generate=100):
   # Evaluation step (generating text using the learned model)
