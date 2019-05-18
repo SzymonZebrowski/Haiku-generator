@@ -2,15 +2,15 @@ import tensorflow as tf
 from random_words import RandomWords
 import numpy as np
 import os
-import time
 import pyphen
 import matplotlib.pyplot as plt
+from utils import preprocess
 
 tf.enable_eager_execution()
 path_to_file = './data/eng-haiku.txt'
 
-
 text = open(path_to_file, 'rb').read().decode(encoding='utf-8')
+text = preprocess(text)
 
 # length of text is the number of characters in it
 print('Length of text: {} characters'.format(len(text)))
@@ -42,7 +42,7 @@ BATCH_SIZE = 64
 # (TF data is designed to work with possibly infinite sequences,
 # so it doesn't attempt to shuffle the entire sequence in memory. Instead,
 # it maintains a buffer in which it shuffles elements).
-BUFFER_SIZE = 10000
+BUFFER_SIZE = 100000
 
 dataset = dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE, drop_remainder=True)
 
@@ -86,7 +86,7 @@ example_batch_loss  = loss(target_example_batch, example_batch_predictions)
 print("Prediction shape: ", example_batch_predictions.shape, " # (batch_size, sequence_length, vocab_size)")
 print("scalar_loss:      ", example_batch_loss.numpy().mean())
 
-model.compile(optimizer='adam', loss=loss, metrics=["accuracy"])
+model.compile(optimizer='adam', loss=loss)
 
 # Directory where the checkpoints will be saved
 checkpoint_dir = './training_checkpoints'
@@ -96,9 +96,9 @@ checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt_{epoch}")
 checkpoint_callback=tf.keras.callbacks.ModelCheckpoint(
     filepath=checkpoint_prefix,
     save_weights_only=True,
-    period=10)
+    period=8500)
 
-EPOCHS=100
+EPOCHS=1000000
 
 #########UNCOMMENT TO TRAIN############
 history = model.fit(dataset, epochs=EPOCHS, callbacks=[checkpoint_callback], steps_per_epoch=1)
@@ -108,21 +108,21 @@ ax1.set_xlabel("Iteration")
 ax1.set_ylabel("Loss")
 ax1.plot(list(range(1, len(history.history['loss']) + 1)), history.history['loss'], 'b', label='Loss')
 
-ax2 = ax1.twinx()
-ax2.set_ylabel("Acurracy")
-ax2.plot(list(range(1, len(history.history['acc']) + 1)), history.history['acc'], 'r', label='Accuracy')
+# ax2 = ax1.twinx()
+# ax2.set_ylabel("Acurracy")
+# ax2.plot(list(range(1, len(history.history['acc']) + 1)), history.history['acc'], 'r', label='Accuracy')
 
 fig.legend(loc='best')
 plt.title("Training")
 
-# plt.show()
+plt.show()
 plt.savefig("wykres.png")
 plt.close()
 
 #########UNCOMMENT TO LOAD############
-#model = build_model(vocab_size, embedding_dim, rnn_units, batch_size=1)
-#model.load_weights(tf.train.latest_checkpoint(checkpoint_dir))
-#model.build(tf.TensorShape([1, None]))
+model = build_model(vocab_size, embedding_dim, rnn_units, batch_size=1)
+model.load_weights(tf.train.latest_checkpoint(checkpoint_dir))
+model.build(tf.TensorShape([1, None]))
 
 def generate_text(model, start_string, num_generate=100):
   # Evaluation step (generating text using the learned model)
@@ -161,31 +161,40 @@ def generate_text(model, start_string, num_generate=100):
   return (start_string + ''.join(text_generated))
 
 
+# def generate_haiku(model):
+#     haiku = 0
+#     five_syllables = []
+#     seven_syllables = []
+#
+#     while haiku == 0:
+#         text = generate_text(model,RandomWords().random_word())
+#         text = text.replace('<br>', '\n').replace('<br','\n').replace('br>','\n').split('\n')
+#         dic = pyphen.Pyphen(lang='en_EN')
+#
+#         for buf in text:
+#             syllables = 0
+#             for word in buf.split(' '):
+#                 if len(word) > 0:
+#                     syllables += dic.inserted(word).count('-')+1
+#             if syllables == 5:
+#                 five_syllables.append(buf+'\n')
+#             elif syllables == 7:
+#                 seven_syllables.append(buf+'\n')
+#
+#         if len(seven_syllables) >= 2 and len(five_syllables) >= 1:
+#             haiku = seven_syllables[0]+five_syllables[0]+seven_syllables[1]
+#
+#     return haiku
+
+
 def generate_haiku(model):
-    haiku = 0
-    five_syllables = []
-    seven_syllables = []
-
-    while haiku == 0:
-        text = generate_text(model,RandomWords().random_word())
-        text = text.replace('<br>', '\n').replace('<br','\n').replace('br>','\n').split('\n')
-        dic = pyphen.Pyphen(lang='en_EN')
-
-        for buf in text:
-            syllables = 0
-            for word in buf.split(' '):
-                if len(word) > 0:
-                    syllables += dic.inserted(word).count('-')+1
-            if syllables == 5:
-                five_syllables.append(buf+'\n')
-            elif syllables == 7:
-                seven_syllables.append(buf+'\n')
-
-        if len(seven_syllables) >= 2 and len(five_syllables) >= 1:
-            haiku = seven_syllables[0]+five_syllables[0]+seven_syllables[1]
-
-    return haiku
-
+    result = generate_text(model, start_string='\n', num_generate=100)
+    endlines = 0
+    for i, char in enumerate(result):
+        if char == '\n':
+            endlines += 1
+        if endlines == 4:
+            return result[1:i]
 
 #print(generate_text(model, start_string=u"Flowers"))
 print("Generated haiku 1. :")
