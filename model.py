@@ -5,17 +5,43 @@ import os
 import pickle
 import pyphen
 import matplotlib.pyplot as plt
-from utils import preprocess
+import argparse
+from utils import preprocess, preprocess_pl, get_syllables
 
-tf.enable_eager_execution()
-path_to_file = './data/eng-haiku.txt'
-syllables_data = './data/eng_haiku'
+ap = argparse.ArgumentParser(description='Process some integers.')
+ap.add_argument('-l', default='eng', help='choose language between pl/eng')
+ap.add_argument('-temp', type=float, default=0.6, help='predictions temperature')
+ap.add_argument('-train', action='store_true', help='set enables training')
+ap.add_argument('-chars', action="store_true", help='set enables generating using characters')
+args = vars(ap.parse_args())
+
 seq_length = 15
 BATCH_SIZE = 64
 BUFFER_SIZE = 10000
 embedding_dim = 256
 rnn_units = 1048
-EPOCHS = 100000
+EPOCHS = 11000
+
+# Directory where the checkpoints will be saved
+checkpoint_dir = './training_checkpoints'
+# Name of the checkpoint files
+
+tf.enable_eager_execution()
+if args['l'] == 'eng':
+    path_to_file = './data/eng-haiku.txt'
+    syllables_data = './data/eng_haiku'
+    checkpoint_dir += '/eng'
+else:
+    path_to_file = './data/pl-haiku.txt'
+    syllables_data = './data/pl_haiku'
+    checkpoint_dir += '/pl'
+
+if args['chars'] == True:
+    syllables_data += '_chars'
+    checkpoint_dir += '/chars'
+
+checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt_{epoch}")
+
 
 
 def build_model(vocab_size, embedding_dim, rnn_units, batch_size):
@@ -31,17 +57,24 @@ def build_model(vocab_size, embedding_dim, rnn_units, batch_size):
     return model
 
 
-def create_helpers(path_to_file, syllables_data):
+def create_helpers(path_to_file, syllables_data, args):
     try:
         file = open(syllables_data, 'rb')
         text = pickle.load(file)
     except FileNotFoundError:
         text = open(path_to_file, 'rb').read().decode(encoding='utf-8')
-        text = preprocess(text)
+        if args['l'] == 'pl':
+            text = preprocess_pl(text)
+            lang = 'pl_PL'
+        else:
+            text = preprocess(text)
+            lang = 'en'
+        if args['chars'] != True:
+            text = get_syllables(text, lang)
+
         with open(syllables_data, 'wb') as file:
             pickle.dump(text, file)
 
-    #print(text)
     vocab = sorted(set(text))
 
     char2idx = {u:i for i, u in enumerate(vocab)}
@@ -81,14 +114,14 @@ def train(model):
     ax1.set_ylabel("Loss")
     ax1.plot(list(range(1, len(history.history['loss']) + 1)), history.history['loss'], 'b', label='Loss')
 
-    ax2 = ax1.twinx()
-    ax2.set_ylabel("Acurracy")
-    ax2.plot(list(range(1, len(history.history['acc']) + 1)), history.history['acc'], 'r', label='Accuracy')
+    # ax2 = ax1.twinx()
+    # ax2.set_ylabel("Acurracy")
+    # ax2.plot(list(range(1, len(history.history['acc']) + 1)), history.history['acc'], 'r', label='Accuracy')
 
     fig.legend(loc='best')
     plt.title("Training")
 
-    plt.show()
+    #plt.show()
     plt.savefig("wykres.png")
     plt.close()
     return model
@@ -146,7 +179,7 @@ def generate_haiku(model, temperature):
             return result[1:i]
 
 
-text, vocab, char2idx, idx2char, text_as_int = create_helpers(path_to_file, syllables_data)
+text, vocab, char2idx, idx2char, text_as_int = create_helpers(path_to_file, syllables_data,args)
 dataset = create_dataset(seq_length)
 
 vocab_size = len(vocab)
@@ -168,69 +201,21 @@ print("scalar_loss:      ", example_batch_loss.numpy().mean())
 
 model.compile(optimizer='adam', loss=loss)
 
-# Directory where the checkpoints will be saved
-checkpoint_dir = './training_checkpoints'
-# Name of the checkpoint files
-checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt_{epoch}")
-
 checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
     filepath=checkpoint_prefix,
     save_weights_only=True,
     period=1000)
 
 
-#########UNCOMMENT TO TRAIN############
-#model = train(model)
+if args['train'] == True:
+    model = train(model)
 
-#########UNCOMMENT TO LOAD############
+
 model = load_latest_model()
 
 
-#########################NOT-SO-PERFECT##############
-# def generate_haiku(model):
-#     haiku = 0
-#     five_syllables = []
-#     seven_syllables = []
-#
-#     while haiku == 0:
-#         text = generate_text(model,RandomWords().random_word())
-#         text = text.replace('<br>', '\n').replace('<br','\n').replace('br>','\n').split('\n')
-#         dic = pyphen.Pyphen(lang='en')
-#         for buf in text:
-#             syllables = 0
-#             for word in buf.split(' '):
-#                 if len(word) > 0:
-#                     print(word)
-#                     syllables += dic.inserted(word).count('-')+1
-#             if buf[0] == ' ' and len(buf) > 0:
-#                 buf = buf[1:]
-#             if syllables == 5:
-#                 five_syllables.append(buf+'\n')
-#             elif syllables == 7:
-#                 seven_syllables.append(buf+'\n')
-#
-#         if len(seven_syllables) >= 2 and len(five_syllables) >= 1:
-#             haiku = seven_syllables[0]+five_syllables[0]+seven_syllables[1]
-#     return haiku
-#################
-
-
-
-
-
-#print(generate_text(model, start_string='\n'))
-temperature = 0.99
+# (generate_text(model, start_string='\n',temperature=0.8))
+temperature = args['temp']
 print("Generated haiku 1. :")
 print(generate_haiku(model, temperature))
 
-print("Generated haiku 2. :")
-print(generate_haiku(model, temperature))
-
-print("Generated haiku 3. :")
-print(generate_haiku(model, temperature))
-
-print("Generated haiku 4. :")
-print(generate_haiku(model, temperature))
-
-print("Generated haiku 4. :")
-print(generate_haiku(model, temperature))
