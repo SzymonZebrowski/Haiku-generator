@@ -5,12 +5,17 @@ def preprocess(DATA):
     data = DATA
     data = data.lower().replace('"', ''). \
             replace('<br> ', '\n').replace('<br>', '\n').replace('\r', '').replace('.', ''). \
-            replace('?', '').replace('!', '').replace("&amp", ''). \
-            replace('(', '').replace(')', '').replace('*', '').replace("'", ''). \
-            replace('[', '').replace(']', '').replace('/', '').replace("\\", ''). \
-            replace('ę', 'e').replace('ć', 'c').replace('ą', 'a'). \
-            replace('ń', 'n').replace('ó', 'o').replace('ś', 's').replace('ź', 'z'). \
-            replace('ż', 'z').replace('ł', 'l').replace(',', '').replace('\'', '')
+        replace('?', '').replace('!', '').replace("&amp", ''). \
+        replace('(', '').replace(')', '').replace('*', '').replace("'", ''). \
+        replace('[', '').replace(']', '').replace('/', '').replace("\\", ''). \
+        replace('ę', 'e').replace('ć', 'c').replace('ą', 'a'). \
+        replace('ń', 'n').replace('ó', 'o').replace('ś', 's').replace('ź', 'z'). \
+        replace('ż', 'z').replace('ł', 'l').replace(',', '').replace('\'', ''). \
+        replace('#', '').replace('$', '').replace('+', '').replace('%', ''). \
+        replace(';', '').replace(':', '').replace('^', '').replace('@', ''). \
+        replace('~', '').replace('_', '').replace('=', '').replace('{', ''). \
+        replace('}', '').replace('|', '')
+
     data = data.replace("--", "-").replace("-", " ")
     return data
 
@@ -21,7 +26,11 @@ def preprocess_pl(DATA):
         replace('<br> ', '\n').replace('<br>', '\n').replace('\r', '').replace("&amp", ''). \
         replace('(', '').replace(')', '').replace('*', '').replace("'", ''). \
         replace('[', '').replace(']', '').replace('/', '').replace("\\", ''). \
-        replace(',', '').replace('\'', '').replace('—', '').replace("\ufeff", '')
+        replace(',', '').replace('\'', '').replace('—', '').replace("\ufeff", ''). \
+        replace('#', '').replace('$', '').replace('+', '').replace('%', ''). \
+        replace(';', '').replace(':', '').replace('^', '').replace('@', ''). \
+        replace('~', '').replace('_', '').replace('=', '').replace('{', ''). \
+        replace('}', '').replace('|', '')
     data = data.replace("--", "-").replace("-", " ")
     return data
 
@@ -30,7 +39,7 @@ def get_syllables(data, lang):
 
     data = data.lower().replace('.', '').replace('?', '').replace('!', '')
     preprocessed =[]
-    data = data.replace("--", "-").replace("-", " ")
+    data = data.replace("--", "-").replace("-", " ").replace('\n\n', '\n')
     dic = pyphen.Pyphen(lang=lang)
     for line in data.split('\n'):
         linebuf = []

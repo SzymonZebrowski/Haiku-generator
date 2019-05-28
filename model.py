@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import argparse
 from utils import preprocess, preprocess_pl, get_syllables
 
-ap = argparse.ArgumentParser(description='Process some integers.')
+ap = argparse.ArgumentParser(description='Haiku generating model')
 ap.add_argument('-l', default='eng', help='choose language between pl/eng')
 ap.add_argument('-temp', type=float, default=0.6, help='predictions temperature')
 ap.add_argument('-train', action='store_true', help='set enables training')
@@ -109,21 +109,21 @@ def loss(labels, logits):
 def train(model):
     history = model.fit(dataset, epochs=EPOCHS, callbacks=[checkpoint_callback], steps_per_epoch=1)
 
-    fig, ax1 = plt.subplots()
-    ax1.set_xlabel("Iteration")
-    ax1.set_ylabel("Loss")
-    ax1.plot(list(range(1, len(history.history['loss']) + 1)), history.history['loss'], 'b', label='Loss')
+    #fig, ax1 = plt.subplots()
+    #ax1.set_xlabel("Iteration")
+    #ax1.set_ylabel("Loss")
+    #ax1.plot(list(range(1, len(history.history['loss']) + 1)), history.history['loss'], 'b', label='Loss')
 
     # ax2 = ax1.twinx()
     # ax2.set_ylabel("Acurracy")
     # ax2.plot(list(range(1, len(history.history['acc']) + 1)), history.history['acc'], 'r', label='Accuracy')
 
-    fig.legend(loc='best')
-    plt.title("Training")
+    #fig.legend(loc='best')
+    #plt.title("Training")
 
     #plt.show()
-    plt.savefig("wykres.png")
-    plt.close()
+    #plt.savefig("wykres.png")
+    #plt.close()
     return model
 
 
@@ -170,13 +170,15 @@ def generate_text(model, start_string, temperature, num_generate=100):
 
 
 def generate_haiku(model, temperature):
-    result = generate_text(model, start_string='\n', num_generate=60, temperature=temperature)
-    endlines = 0
-    for i, char in enumerate(result):
-        if char == '\n':
-            endlines+=1
-        if endlines == 4:
-            return result[1:i]
+    while True:
+        result = generate_text(model, start_string='\n', num_generate=100, temperature=temperature)
+        result = result.replace('\n\n', '\n')  # porzebne do modelu pl chars
+        endlines = 0
+        for i, char in enumerate(result):
+            if char == '\n':
+                endlines+=1
+            if endlines == 4:
+                return result[1:i]
 
 
 text, vocab, char2idx, idx2char, text_as_int = create_helpers(path_to_file, syllables_data,args)
@@ -206,16 +208,19 @@ checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
     save_weights_only=True,
     period=1000)
 
-
 if args['train'] == True:
     model = train(model)
 
 
 model = load_latest_model()
 
-
-# (generate_text(model, start_string='\n',temperature=0.8))
 temperature = args['temp']
 print("Generated haiku 1. :")
+print(generate_haiku(model, temperature))
+
+print("Generated haiku 2. :")
+print(generate_haiku(model, temperature))
+
+print("Generated haiku 3. :")
 print(generate_haiku(model, temperature))
 
